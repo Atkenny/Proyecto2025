@@ -75,26 +75,37 @@ const Encabezado = () => {
                 <strong>Inicio</strong>
               </Nav.Link>
               <Nav.Link
-                onClick={() => handleNavigate("/productos")}
-                className={isCollapsed ? "color-texto-marca" : "text-white"}
-              >
-                <i className="bi bi-box-seam me-2"></i>
-                <strong>Productos</strong>
-              </Nav.Link>
-              <Nav.Link
-                onClick={() => handleNavigate("/categorias")}
-                className={isCollapsed ? "color-texto-marca" : "text-white"}
-              >
-                <i className="bi bi-tags me-2"></i>
-                <strong>Categorías</strong>
-              </Nav.Link>
-              <Nav.Link
                 onClick={() => handleNavigate("/catalogo")}
                 className={isCollapsed ? "color-texto-marca" : "text-white"}
               >
                 <i className="bi bi-book me-2"></i>
                 <strong>Catálogo</strong>
               </Nav.Link>
+              {isLoggedIn && (
+                <>
+                  <Nav.Link
+                    onClick={() => handleNavigate("/categorias")}
+                    className={isCollapsed ? "color-texto-marca" : "text-white"}
+                  >
+                    <i className="bi bi-tags me-2"></i>
+                    <strong>Categorías</strong>
+                  </Nav.Link>
+                  <Nav.Link
+                    onClick={() => handleNavigate("/productos")}
+                    className={isCollapsed ? "color-texto-marca" : "text-white"}
+                  >
+                    <i className="bi bi-box-seam me-2"></i>
+                    <strong>Productos</strong>
+                  </Nav.Link>
+                  <Nav.Link
+                    onClick={() => handleNavigate("/libros")}
+                    className={isCollapsed ? "color-texto-marca" : "text-white"}
+                  >
+                    <i className="bi bi-book me-2"></i>
+                    <strong>Libros</strong>
+                  </Nav.Link>
+                </>
+              )}
               {isLoggedIn ? (
                 <Nav.Link onClick={handleLogout} className={isCollapsed ? "color-texto-marca" : "text-white"}>
                   <i className="bi bi-box-arrow-right me-2"></i>

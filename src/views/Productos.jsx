@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Container, Button } from "react-bootstrap";
 import { db } from "../assets/database/firebaseconfig";
 import {
@@ -13,14 +13,19 @@ import TablaProductos from "../components/Productos/TablaProductos";
 import ModalRegistroProducto from "../components/Productos/ModalRegistroProducto";
 import ModalEdicionProducto from "../components/Productos/ModalEdicionProducto";
 import ModalEliminacionProducto from "../components/Productos/ModalEliminacionProducto";
+import AnimacionEliminacion from "../components/Productos/AnimacionEliminacion";
+import AnimacionRegistro from "../components/Productos/AnimacionRegistro";
+import { useAuth } from "../assets/database/authcontext";
+import { useNavigate } from "react-router-dom";
 
 const Productos = () => {
-  // Estados para manejo de datos
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAnimacionRegistro, setShowAnimacionRegistro] = useState(false);
+  const [showAnimacionEliminacion, setShowAnimacionEliminacion] = useState(false);
   const [nuevoProducto, setNuevoProducto] = useState({
     nombreProducto: "",
     precio: "",
@@ -30,57 +35,24 @@ const Productos = () => {
   const [productoEditado, setProductoEditado] = useState(null);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
 
-  // Referencia a las colecciones en Firestore
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
   const productosCollection = collection(db, "productos");
   const categoriasCollection = collection(db, "categorias");
 
-  // Función para obtener todas las categorías y productos de Firestore
-  const fetchData = async () => {
-    try {
-      // Obtener productos
-      const productosData = await getDocs(productosCollection);
-      const fetchedProductos = productosData.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
-      setProductos(fetchedProductos);
-
-      // Obtener categorías
-      const categoriasData = await getDocs(categoriasCollection);
-      const fetchedCategorias = categoriasData.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
-      setCategorias(fetchedCategorias);
-    } catch (error) {
-      console.error("Error al obtener datos:", error);
-    }
-  };
-
-  // Hook useEffect para carga inicial de datos
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Manejador de cambios en inputs del formulario de nuevo producto
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNuevoProducto((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Manejador de cambios en inputs del formulario de edición
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setProductoEditado((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Función para agregar un nuevo producto (CREATE)
   const handleAddProducto = async () => {
+    if (!isLoggedIn) {
+      alert("Debes iniciar sesión para agregar un producto.");
+      navigate("/login");
+      return;
+    }
+
     if (!nuevoProducto.nombreProducto || !nuevoProducto.precio || !nuevoProducto.categoria) {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
     try {
+      setShowAnimacionRegistro(true);
       await addDoc(productosCollection, nuevoProducto);
       setShowModal(false);
       setNuevoProducto({
@@ -92,72 +64,130 @@ const Productos = () => {
       await fetchData();
     } catch (error) {
       console.error("Error al agregar producto:", error);
+    } finally {
+      setShowAnimacionRegistro(false);
     }
   };
 
-  // Función para actualizar un producto existente (UPDATE)
   const handleEditProducto = async () => {
+    if (!isLoggedIn) {
+      alert("Debes iniciar sesión para editar un producto.");
+      navigate("/login");
+      return;
+    }
+
     if (!productoEditado.nombreProducto || !productoEditado.precio || !productoEditado.categoria) {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
     try {
+      setShowAnimacionRegistro(true);
       const productoRef = doc(db, "productos", productoEditado.id);
       await updateDoc(productoRef, productoEditado);
       setShowEditModal(false);
       await fetchData();
     } catch (error) {
       console.error("Error al actualizar producto:", error);
+    } finally {
+      setShowAnimacionRegistro(false);
     }
   };
 
-  // Función para eliminar un producto (DELETE)
   const handleDeleteProducto = async () => {
+    if (!isLoggedIn) {
+      alert("Debes iniciar sesión para eliminar un producto.");
+      navigate("/login");
+      return;
+    }
+
     if (productoAEliminar) {
       try {
+        setShowAnimacionEliminacion(true);
         const productoRef = doc(db, "productos", productoAEliminar.id);
         await deleteDoc(productoRef);
         setShowDeleteModal(false);
         await fetchData();
       } catch (error) {
         console.error("Error al eliminar producto:", error);
+      } finally {
+        setShowAnimacionEliminacion(false);
       }
     }
   };
 
-  // Función para abrir el modal de edición con datos prellenados
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNuevoProducto((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setProductoEditado((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
   const openEditModal = (producto) => {
-    setProductoEditado({ ...producto });
+    setProductoEditado(producto);
     setShowEditModal(true);
   };
 
-  // Función para abrir el modal de eliminación
   const openDeleteModal = (producto) => {
     setProductoAEliminar(producto);
     setShowDeleteModal(true);
   };
 
-  // Renderizado del componente
+  const fetchData = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(productosCollection);
+      const fetchedProductos = querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+      setProductos(fetchedProductos);
+    } catch (error) {
+      console.error("Error al obtener productos:", error);
+    }
+  }, [productosCollection]);
+
+  const fetchCategorias = useCallback(async () => {
+    try {
+      const categoriasData = await getDocs(categoriasCollection);
+      const fetchedCategorias = categoriasData.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+      setCategorias(fetchedCategorias);
+    } catch (error) {
+      console.error("Error al obtener categorías:", error);
+    }
+  }, [categoriasCollection]);
+
+  useEffect(() => {
+    const cargarDatos = async () => {
+      await Promise.all([fetchData(), fetchCategorias()]);
+    };
+    cargarDatos();
+  }, [fetchData, fetchCategorias]);
+
   return (
     <Container className="mt-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="mb-1">Gestión de Productos</h2>
-          <p className="text-muted">Administra el inventario de productos de tu tienda</p>
-        </div>
-        <Button 
-          variant="primary" 
-          onClick={() => setShowModal(true)}
-          className="d-flex align-items-center"
-        >
-          <i className="bi bi-plus-circle me-2"></i>
-          Agregar Producto
+      <br />
+      <h4>Gestión de Productos</h4>
+      {isLoggedIn && (
+        <Button className="mb-3" onClick={() => setShowModal(true)}>
+          Agregar producto
         </Button>
-      </div>
+      )}
       <TablaProductos
         productos={productos}
         openEditModal={openEditModal}
         openDeleteModal={openDeleteModal}
+        isLoggedIn={isLoggedIn}
       />
       <ModalRegistroProducto
         showModal={showModal}
@@ -171,6 +201,7 @@ const Productos = () => {
         showEditModal={showEditModal}
         setShowEditModal={setShowEditModal}
         productoEditado={productoEditado}
+        setProductoEditado={setProductoEditado}
         handleEditInputChange={handleEditInputChange}
         handleEditProducto={handleEditProducto}
         categorias={categorias}
@@ -179,6 +210,15 @@ const Productos = () => {
         showDeleteModal={showDeleteModal}
         setShowDeleteModal={setShowDeleteModal}
         handleDeleteProducto={handleDeleteProducto}
+      />
+      <AnimacionEliminacion
+        show={showAnimacionEliminacion}
+        onHide={() => setShowAnimacionEliminacion(false)}
+      />
+      <AnimacionRegistro
+        show={showAnimacionRegistro}
+        onHide={() => setShowAnimacionRegistro(false)}
+        tipo={productoEditado ? 'editar' : 'guardar'}
       />
     </Container>
   );
