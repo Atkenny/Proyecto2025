@@ -3,6 +3,10 @@ import { Table, Button } from "react-bootstrap";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 const TablaCategorias = ({ categorias, openEditModal, openDeleteModal }) => {
+  if (!categorias || categorias.length === 0) {
+    return <p>No hay categorías disponibles.</p>;
+  }
+
   return (
     <Table striped bordered hover responsive>
       <thead>

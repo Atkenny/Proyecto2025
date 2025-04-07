@@ -17,9 +17,12 @@ import AnimacionEliminacion from "../components/Categorias/AnimacionEliminacion"
 import AnimacionRegistro from "../components/Categorias/AnimacionRegistro";
 import { useAuth } from "../assets/database/authcontext";
 import { useNavigate } from "react-router-dom";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
 
 const Categorias = () => {
   const [categorias, setCategorias] = useState([]);
+  const [filteredCategorias, setFilteredCategorias] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -27,14 +30,47 @@ const Categorias = () => {
   const [showAnimacionEliminacion, setShowAnimacionEliminacion] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState({
     nombreCategoria: "",
-    descripcion: ""
+    descripcionCategoria: "",
   });
   const [categoriaEditada, setCategoriaEditada] = useState(null);
   const [categoriaAEliminar, setCategoriaAEliminar] = useState(null);
 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
-  const categoriasCollection = collection(db, "categorias");
+
+  const fetchData = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "categorias"));
+      const categoriasData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Categorías cargadas:", categoriasData); // Para depuración
+      setCategorias(categoriasData);
+      setFilteredCategorias(categoriasData);
+    } catch (error) {
+      console.error("Error al obtener categorías:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSearchChange = (event) => {
+    const term = event.target.value.toLowerCase();
+    setSearchTerm(term);
+    if (!term.trim()) {
+      setFilteredCategorias(categorias);
+    } else {
+      const filtered = categorias.filter(
+        (categoria) =>
+          categoria.nombreCategoria.toLowerCase().includes(term) ||
+          categoria.descripcionCategoria.toLowerCase().includes(term)
+      );
+      setFilteredCategorias(filtered);
+    }
+  };
 
   const handleAddCategoria = async () => {
     if (!isLoggedIn) {
@@ -43,21 +79,22 @@ const Categorias = () => {
       return;
     }
 
-    if (!nuevaCategoria.nombreCategoria || !nuevaCategoria.descripcion) {
+    if (!nuevaCategoria.nombreCategoria || !nuevaCategoria.descripcionCategoria) {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
     try {
       setShowAnimacionRegistro(true);
-      await addDoc(categoriasCollection, nuevaCategoria);
+      await addDoc(collection(db, "categorias"), nuevaCategoria);
       setShowModal(false);
       setNuevaCategoria({
         nombreCategoria: "",
-        descripcion: ""
+        descripcionCategoria: "",
       });
       await fetchData();
     } catch (error) {
       console.error("Error al agregar categoría:", error);
+      alert("Error al agregar la categoría. Por favor, intenta de nuevo.");
     } finally {
       setShowAnimacionRegistro(false);
     }
@@ -70,18 +107,27 @@ const Categorias = () => {
       return;
     }
 
-    if (!categoriaEditada.nombreCategoria || !categoriaEditada.descripcion) {
+    if (!categoriaEditada || !categoriaEditada.id) {
+      alert("No hay una categoría seleccionada para editar.");
+      return;
+    }
+
+    if (!categoriaEditada.nombreCategoria || !categoriaEditada.descripcionCategoria) {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
     try {
       setShowAnimacionRegistro(true);
       const categoriaRef = doc(db, "categorias", categoriaEditada.id);
-      await updateDoc(categoriaRef, categoriaEditada);
+      await updateDoc(categoriaRef, {
+        nombreCategoria: categoriaEditada.nombreCategoria,
+        descripcionCategoria: categoriaEditada.descripcionCategoria,
+      });
       setShowEditModal(false);
       await fetchData();
     } catch (error) {
       console.error("Error al actualizar categoría:", error);
+      alert("Error al actualizar la categoría. Por favor, intenta de nuevo.");
     } finally {
       setShowAnimacionRegistro(false);
     }
@@ -94,107 +140,82 @@ const Categorias = () => {
       return;
     }
 
-    if (categoriaAEliminar) {
-      try {
-        setShowAnimacionEliminacion(true);
-        const categoriaRef = doc(db, "categorias", categoriaAEliminar.id);
-        await deleteDoc(categoriaRef);
-        setShowDeleteModal(false);
-        await fetchData();
-      } catch (error) {
-        console.error("Error al eliminar categoría:", error);
-      } finally {
-        setShowAnimacionEliminacion(false);
-      }
+    if (!categoriaAEliminar || !categoriaAEliminar.id) {
+      alert("No hay una categoría seleccionada para eliminar.");
+      return;
+    }
+
+    try {
+      setShowAnimacionEliminacion(true);
+      const categoriaRef = doc(db, "categorias", categoriaAEliminar.id);
+      await deleteDoc(categoriaRef);
+      setShowDeleteModal(false);
+      setCategoriaAEliminar(null);
+      await fetchData();
+    } catch (error) {
+      console.error("Error al eliminar categoría:", error);
+      alert("Error al eliminar la categoría. Por favor, intenta de nuevo.");
+    } finally {
+      setShowAnimacionEliminacion(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNuevaCategoria((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setCategoriaEditada((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
-  const openEditModal = (categoria) => {
+  const handleOpenEditModal = (categoria) => {
     setCategoriaEditada(categoria);
     setShowEditModal(true);
   };
 
-  const openDeleteModal = (categoria) => {
+  const handleOpenDeleteModal = (categoria) => {
     setCategoriaAEliminar(categoria);
     setShowDeleteModal(true);
   };
 
-  const fetchData = useCallback(async () => {
-    try {
-      const querySnapshot = await getDocs(categoriasCollection);
-      const fetchedCategorias = querySnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
-      setCategorias(fetchedCategorias);
-    } catch (error) {
-      console.error("Error al obtener categorías:", error);
-    }
-  }, [categoriasCollection]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   return (
     <Container className="mt-5">
-      <br />
-      <h4>Gestión de Categorías</h4>
-      {isLoggedIn && (
-        <Button className="mb-3" onClick={() => setShowModal(true)}>
-          Agregar categoría
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Categorías</h2>
+        <Button variant="primary" onClick={() => setShowModal(true)}>
+          Agregar Categoría
         </Button>
-      )}
+      </div>
+
+      <CuadroBusquedas
+        searchText={searchTerm}
+        handleSearchChange={handleSearchChange}
+        placeholder="Buscar categoría..."
+      />
+
       <TablaCategorias
-        categorias={categorias}
-        openEditModal={openEditModal}
-        openDeleteModal={openDeleteModal}
-        isLoggedIn={isLoggedIn}
+        categorias={filteredCategorias}
+        openEditModal={handleOpenEditModal}
+        openDeleteModal={handleOpenDeleteModal}
       />
+
       <ModalRegistroCategoria
-        showModal={showModal}
-        setShowModal={setShowModal}
-        nuevaCategoria={nuevaCategoria}
-        handleInputChange={handleInputChange}
-        handleAddCategoria={handleAddCategoria}
+        show={showModal}
+        handleClose={() => setShowModal(false)}
+        handleSave={handleAddCategoria}
+        categoria={nuevaCategoria}
+        setCategoria={setNuevaCategoria}
       />
+
       <ModalEdicionCategoria
-        showEditModal={showEditModal}
-        setShowEditModal={setShowEditModal}
-        categoriaEditada={categoriaEditada}
-        handleEditInputChange={handleEditInputChange}
-        handleEditCategoria={handleEditCategoria}
+        show={showEditModal}
+        handleClose={() => setShowEditModal(false)}
+        handleSave={handleEditCategoria}
+        categoria={categoriaEditada}
+        setCategoria={setCategoriaEditada}
       />
+
       <ModalEliminacionCategoria
-        showDeleteModal={showDeleteModal}
-        setShowDeleteModal={setShowDeleteModal}
-        handleDeleteCategoria={handleDeleteCategoria}
+        show={showDeleteModal}
+        handleClose={() => setShowDeleteModal(false)}
+        handleConfirm={handleDeleteCategoria}
+        categoria={categoriaAEliminar}
       />
-      <AnimacionEliminacion
-        show={showAnimacionEliminacion}
-        onHide={() => setShowAnimacionEliminacion(false)}
-      />
-      <AnimacionRegistro
-        show={showAnimacionRegistro}
-        onHide={() => setShowAnimacionRegistro(false)}
-        tipo={categoriaEditada ? 'editar' : 'guardar'}
-      />
+
+      <AnimacionRegistro show={showAnimacionRegistro} />
+      <AnimacionEliminacion show={showAnimacionEliminacion} />
     </Container>
   );
 };

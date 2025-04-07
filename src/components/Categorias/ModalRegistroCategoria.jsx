@@ -1,34 +1,28 @@
-import React, { useState } from "react";
+import React from "react";
 import { Modal, Form, Button } from "react-bootstrap";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 const ModalRegistroCategoria = ({
-  showModal,
-  setShowModal,
-  nuevaCategoria,
-  handleInputChange,
-  handleAddCategoria
+  show,
+  handleClose,
+  handleSave,
+  categoria,
+  setCategoria
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await handleAddCategoria();
-    } finally {
-      setIsLoading(false);
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setCategoria(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
     <Modal 
-      show={showModal} 
-      onHide={() => !isLoading && setShowModal(false)}
+      show={show} 
+      onHide={handleClose}
       size="lg"
       centered
-      backdrop={isLoading ? "static" : true}
-      keyboard={!isLoading}
     >
       <Modal.Header 
         closeButton 
@@ -50,82 +44,49 @@ const ModalRegistroCategoria = ({
             >
               <i className="bi bi-folder-plus fs-5"></i>
             </div>
-            <div>
-              <h5 className="fw-bold m-0">Registrar Categoría</h5>
-              <small className="text-muted">Ingresa los detalles de la nueva categoría</small>
-            </div>
+            Nueva Categoría
           </div>
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body className="px-4 py-4">
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-semibold mb-2">
-              <i className="bi bi-tag me-2 text-primary"></i>
-              Nombre de la Categoría
-            </Form.Label>
+      <Modal.Body className="p-4">
+        <Form>
+          <Form.Group className="mb-3">
+            <Form.Label>Nombre de la categoría</Form.Label>
             <Form.Control
               type="text"
               name="nombreCategoria"
-              value={nuevaCategoria.nombreCategoria}
+              value={categoria.nombreCategoria}
               onChange={handleInputChange}
+              placeholder="Ingrese el nombre de la categoría"
               required
-              className="form-control-lg"
-              disabled={isLoading}
-              placeholder="Ej: Electrónicos, Ropa, Alimentos..."
             />
           </Form.Group>
-
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-semibold mb-2">
-              <i className="bi bi-card-text me-2 text-primary"></i>
-              Descripción
-            </Form.Label>
+          <Form.Group className="mb-3">
+            <Form.Label>Descripción</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
-              name="descripcion"
-              value={nuevaCategoria.descripcion}
+              name="descripcionCategoria"
+              value={categoria.descripcionCategoria}
               onChange={handleInputChange}
+              placeholder="Ingrese la descripción de la categoría"
               required
-              className="form-control-lg"
-              disabled={isLoading}
-              placeholder="Describe brevemente esta categoría..."
             />
           </Form.Group>
-
-          <div className="d-flex justify-content-end gap-2 mt-4">
-            <Button 
-              variant="light" 
-              onClick={() => setShowModal(false)}
-              className="fw-semibold px-4"
-              style={{ backgroundColor: '#F8F9FA' }}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={isLoading}
-              className="fw-semibold px-4"
-              style={{ backgroundColor: '#0093E9', borderColor: '#0093E9' }}
-            >
-              {isLoading ? (
-                <>
-                  <i className="bi bi-arrow-repeat me-2 spinning"></i>
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-plus-circle me-2"></i>
-                  Agregar Categoría
-                </>
-              )}
-            </Button>
-          </div>
         </Form>
       </Modal.Body>
+      <Modal.Footer className="border-0 pt-0">
+        <Button variant="secondary" onClick={handleClose}>
+          Cancelar
+        </Button>
+        <Button 
+          variant="primary" 
+          onClick={handleSave}
+          disabled={!categoria.nombreCategoria || !categoria.descripcionCategoria}
+        >
+          Guardar
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

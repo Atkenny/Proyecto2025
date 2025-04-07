@@ -1,115 +1,96 @@
-import React, { useState } from "react";
+import React from "react";
 import { Modal, Form, Button } from "react-bootstrap";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 const ModalEdicionCategoria = ({
-  showEditModal,
-  setShowEditModal,
-  categoriaEditada,
-  handleEditInputChange,
-  handleEditCategoria
+  show,
+  handleClose,
+  handleSave,
+  categoria,
+  setCategoria
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await handleEditCategoria();
-      setShowEditModal(false);
-    } catch (error) {
-      console.error("Error al editar categoría:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setCategoria(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  if (!categoriaEditada) return null;
-
-  const handleClose = () => {
-    if (!isLoading) {
-      setShowEditModal(false);
-    }
-  };
+  if (!categoria) {
+    return null;
+  }
 
   return (
     <Modal 
-      show={showEditModal} 
+      show={show} 
       onHide={handleClose}
-      backdrop={isLoading ? "static" : true}
-      keyboard={!isLoading}
+      size="lg"
+      centered
     >
-      <Modal.Header closeButton>
-        <Modal.Title>
-          <i className="bi bi-pencil-square me-2"></i>
-          Editar Categoría
+      <Modal.Header 
+        closeButton 
+        className="border-0 pb-0"
+        style={{
+          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+          borderRadius: '8px 8px 0 0',
+          padding: '1.5rem'
+        }}
+      >
+        <Modal.Title className="h5 m-0">
+          <div className="d-flex align-items-center">
+            <div 
+              className="me-3 p-2 rounded-circle"
+              style={{
+                background: 'rgba(0, 147, 233, 0.1)',
+                color: '#0093E9'
+              }}
+            >
+              <i className="bi bi-pencil-square fs-5"></i>
+            </div>
+            Editar Categoría
+          </div>
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
+      <Modal.Body className="p-4">
+        <Form>
           <Form.Group className="mb-3">
-            <Form.Label>
-              <i className="bi bi-tag me-2"></i>
-              Nombre de la Categoría
-            </Form.Label>
+            <Form.Label>Nombre de la categoría</Form.Label>
             <Form.Control
               type="text"
               name="nombreCategoria"
-              value={categoriaEditada.nombreCategoria}
-              onChange={handleEditInputChange}
+              value={categoria.nombreCategoria || ''}
+              onChange={handleInputChange}
+              placeholder="Ingrese el nombre de la categoría"
               required
-              disabled={isLoading}
             />
           </Form.Group>
-
           <Form.Group className="mb-3">
-            <Form.Label>
-              <i className="bi bi-card-text me-2"></i>
-              Descripción
-            </Form.Label>
+            <Form.Label>Descripción</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
-              name="descripcion"
-              value={categoriaEditada.descripcionCategoria}
-              onChange={handleEditInputChange}
+              name="descripcionCategoria"
+              value={categoria.descripcionCategoria || ''}
+              onChange={handleInputChange}
+              placeholder="Ingrese la descripción de la categoría"
               required
-              disabled={isLoading}
             />
           </Form.Group>
-
-          <div className="d-flex justify-content-end gap-2">
-            <Button 
-              variant="light" 
-              onClick={handleClose}
-              className="fw-semibold"
-              style={{ backgroundColor: '#F8F9FA' }}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={isLoading}
-              className="fw-semibold"
-              style={{ backgroundColor: '#0093E9', borderColor: '#0093E9' }}
-            >
-              {isLoading ? (
-                <>
-                  <i className="bi bi-arrow-repeat me-2 spinning"></i>
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check-lg me-2"></i>
-                  Actualizar Cambios
-                </>
-              )}
-            </Button>
-          </div>
         </Form>
       </Modal.Body>
+      <Modal.Footer className="border-0 pt-0">
+        <Button variant="secondary" onClick={handleClose}>
+          Cancelar
+        </Button>
+        <Button 
+          variant="primary" 
+          onClick={handleSave}
+          disabled={!categoria.nombreCategoria || !categoria.descripcionCategoria}
+        >
+          Guardar Cambios
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };
