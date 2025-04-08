@@ -18,6 +18,7 @@ import AnimacionRegistro from "../components/Categorias/AnimacionRegistro";
 import { useAuth } from "../assets/database/authcontext";
 import { useNavigate } from "react-router-dom";
 import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
+import Paginacion from "../components/ordenamiento/Paginacion";
 
 const Categorias = () => {
   const [categorias, setCategorias] = useState([]);
@@ -34,6 +35,9 @@ const Categorias = () => {
   });
   const [categoriaEditada, setCategoriaEditada] = useState(null);
   const [categoriaAEliminar, setCategoriaAEliminar] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
@@ -170,53 +174,66 @@ const Categorias = () => {
     setShowDeleteModal(true);
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCategorias = filteredCategorias.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
-    <Container className="mt-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Categorías</h2>
-        <Button variant="primary" onClick={() => setShowModal(true)}>
-          Agregar Categoría
-        </Button>
-      </div>
+    <>
+      <Container className="mt-5">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2>Categorías</h2>
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            Agregar Categoría
+          </Button>
+        </div>
 
-      <CuadroBusquedas
-        searchText={searchTerm}
-        handleSearchChange={handleSearchChange}
-        placeholder="Buscar categoría..."
-      />
+        <CuadroBusquedas
+          searchText={searchTerm}
+          handleSearchChange={handleSearchChange}
+          placeholder="Buscar categoría..."
+        />
 
-      <TablaCategorias
-        categorias={filteredCategorias}
-        openEditModal={handleOpenEditModal}
-        openDeleteModal={handleOpenDeleteModal}
-      />
+        <TablaCategorias
+          categorias={currentCategorias}
+          openEditModal={handleOpenEditModal}
+          openDeleteModal={handleOpenDeleteModal}
+        />
 
-      <ModalRegistroCategoria
-        show={showModal}
-        handleClose={() => setShowModal(false)}
-        handleSave={handleAddCategoria}
-        categoria={nuevaCategoria}
-        setCategoria={setNuevaCategoria}
-      />
+        <Paginacion
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredCategorias.length}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+        />
 
-      <ModalEdicionCategoria
-        show={showEditModal}
-        handleClose={() => setShowEditModal(false)}
-        handleSave={handleEditCategoria}
-        categoria={categoriaEditada}
-        setCategoria={setCategoriaEditada}
-      />
+        <ModalRegistroCategoria
+          show={showModal}
+          handleClose={() => setShowModal(false)}
+          handleSave={handleAddCategoria}
+          categoria={nuevaCategoria}
+          setCategoria={setNuevaCategoria}
+        />
 
-      <ModalEliminacionCategoria
-        show={showDeleteModal}
-        handleClose={() => setShowDeleteModal(false)}
-        handleConfirm={handleDeleteCategoria}
-        categoria={categoriaAEliminar}
-      />
+        <ModalEdicionCategoria
+          show={showEditModal}
+          handleClose={() => setShowEditModal(false)}
+          handleSave={handleEditCategoria}
+          categoria={categoriaEditada}
+          setCategoria={setCategoriaEditada}
+        />
 
-      <AnimacionRegistro show={showAnimacionRegistro} />
-      <AnimacionEliminacion show={showAnimacionEliminacion} />
-    </Container>
+        <ModalEliminacionCategoria
+          show={showDeleteModal}
+          handleClose={() => setShowDeleteModal(false)}
+          handleConfirm={handleDeleteCategoria}
+          categoria={categoriaAEliminar}
+        />
+
+        <AnimacionRegistro show={showAnimacionRegistro} />
+        <AnimacionEliminacion show={showAnimacionEliminacion} />
+      </Container>
+    </>
   );
 };
 

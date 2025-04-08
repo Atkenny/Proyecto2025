@@ -9,29 +9,22 @@ const ModalEdicionProducto = ({
   handleEditInputChange,
   handleEditProducto,
   categorias,
-  setProductoEditado
+  setProductoEditado,
+  isLoading, // Recibir isLoading desde Productos
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
   const [imagenLocal, setImagenLocal] = useState("");
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
-    if (productoEditado?.imagen) {
-      setImagenLocal(productoEditado.imagen);
-    }
+    if (productoEditado?.imagen) setImagenLocal(productoEditado.imagen);
   }, [productoEditado]);
 
   const validateForm = () => {
     const newErrors = {};
-    if (!productoEditado.nombreProducto.trim()) {
-      newErrors.nombreProducto = "El nombre del producto es requerido";
-    }
-    if (!productoEditado.precio || productoEditado.precio <= 0) {
-      newErrors.precio = "El precio debe ser mayor a 0";
-    }
-    if (!productoEditado.categoria) {
-      newErrors.categoria = "Debes seleccionar una categoría";
-    }
+    if (!productoEditado.nombreProducto.trim()) newErrors.nombreProducto = "El nombre del producto es requerido";
+    if (!productoEditado.precio || productoEditado.precio <= 0) newErrors.precio = "El precio debe ser mayor a 0";
+    if (!productoEditado.categoria) newErrors.categoria = "Debes seleccionar una categoría";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -39,22 +32,20 @@ const ModalEdicionProducto = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
-    setIsLoading(true);
+    setSubmitError(null);
     try {
       await handleEditProducto();
-      setShowEditModal(false);
+      handleClose();
     } catch (error) {
+      setSubmitError("Error al actualizar el producto. Intenta de nuevo.");
       console.error("Error al actualizar producto:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleImagenChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB máximo
+      if (file.size > 5 * 1024 * 1024) {
         alert("La imagen no debe superar los 5MB");
         return;
       }
@@ -62,10 +53,7 @@ const ModalEdicionProducto = ({
       reader.onloadend = () => {
         const nuevaImagen = reader.result;
         setImagenLocal(nuevaImagen);
-        setProductoEditado(prev => ({
-          ...prev,
-          imagen: nuevaImagen
-        }));
+        setProductoEditado((prev) => ({ ...prev, imagen: nuevaImagen }));
       };
       reader.readAsDataURL(file);
     }
@@ -73,26 +61,23 @@ const ModalEdicionProducto = ({
 
   const handleRemoveImagen = () => {
     setImagenLocal("");
-    setProductoEditado(prev => ({
-      ...prev,
-      imagen: ""
-    }));
+    setProductoEditado((prev) => ({ ...prev, imagen: "" }));
   };
 
   const handleClose = () => {
     if (!isLoading) {
-      if (productoEditado?.imagen) {
-        setImagenLocal(productoEditado.imagen);
-      }
       setShowEditModal(false);
+      setErrors({});
+      setSubmitError(null);
+      if (productoEditado?.imagen) setImagenLocal(productoEditado.imagen);
     }
   };
 
   if (!productoEditado) return null;
 
   return (
-    <Modal 
-      show={showEditModal} 
+    <Modal
+      show={showEditModal}
       onHide={handleClose}
       size="lg"
       centered
@@ -108,12 +93,12 @@ const ModalEdicionProducto = ({
       </Modal.Header>
       <Modal.Body className="pt-4">
         <Form onSubmit={handleSubmit}>
+          {submitError && <div className="alert alert-danger">{submitError}</div>}
           <Row>
             <Col md={6}>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">
-                  <i className="bi bi-tag me-2"></i>
-                  Nombre del Producto
+                  <i className="bi bi-tag me-2"></i> Nombre del Producto
                 </Form.Label>
                 <Form.Control
                   type="text"
@@ -121,21 +106,16 @@ const ModalEdicionProducto = ({
                   value={productoEditado?.nombreProducto || ""}
                   onChange={handleEditInputChange}
                   placeholder="Ingresa el nombre del producto"
-                  className={`form-control-lg ${errors.nombreProducto ? 'is-invalid' : ''}`}
+                  className={`form-control-lg ${errors.nombreProducto ? "is-invalid" : ""}`}
                   disabled={isLoading}
                 />
-                {errors.nombreProducto && (
-                  <div className="invalid-feedback">
-                    {errors.nombreProducto}
-                  </div>
-                )}
+                {errors.nombreProducto && <div className="invalid-feedback">{errors.nombreProducto}</div>}
               </Form.Group>
             </Col>
             <Col md={6}>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">
-                  <i className="bi bi-currency-dollar me-2"></i>
-                  Precio
+                  <i className="bi bi-currency-dollar me-2"></i> Precio
                 </Form.Label>
                 <InputGroup className="input-group-lg">
                   <InputGroup.Text className="bg-light border-end-0">
@@ -147,29 +127,23 @@ const ModalEdicionProducto = ({
                     value={productoEditado?.precio || ""}
                     onChange={handleEditInputChange}
                     placeholder="0.00"
-                    className={`border-start-0 ${errors.precio ? 'is-invalid' : ''}`}
+                    className={`border-start-0 ${errors.precio ? "is-invalid" : ""}`}
                     disabled={isLoading}
                   />
                 </InputGroup>
-                {errors.precio && (
-                  <div className="invalid-feedback">
-                    {errors.precio}
-                  </div>
-                )}
+                {errors.precio && <div className="invalid-feedback">{errors.precio}</div>}
               </Form.Group>
             </Col>
           </Row>
-
           <Form.Group className="mb-4">
             <Form.Label className="fw-semibold">
-              <i className="bi bi-grid me-2"></i>
-              Categoría
+              <i className="bi bi-grid me-2"></i> Categoría
             </Form.Label>
             <Form.Select
               name="categoria"
               value={productoEditado?.categoria || ""}
               onChange={handleEditInputChange}
-              className={`form-select-lg ${errors.categoria ? 'is-invalid' : ''}`}
+              className={`form-select-lg ${errors.categoria ? "is-invalid" : ""}`}
               disabled={isLoading}
             >
               <option value="" className="text-muted">Selecciona una categoría</option>
@@ -179,51 +153,31 @@ const ModalEdicionProducto = ({
                 </option>
               ))}
             </Form.Select>
-            {errors.categoria && (
-              <div className="invalid-feedback">
-                {errors.categoria}
-              </div>
-            )}
+            {errors.categoria && <div className="invalid-feedback">{errors.categoria}</div>}
           </Form.Group>
-
           <Form.Group className="mb-3">
             <Form.Label>Imagen</Form.Label>
             <div className="position-relative">
               {imagenLocal ? (
                 <div className="d-flex align-items-center border rounded p-3">
-                  <img 
-                    src={imagenLocal} 
-                    alt="Vista previa" 
-                    style={{ 
-                      maxWidth: '100px', 
-                      maxHeight: '100px', 
-                      objectFit: 'contain' 
-                    }}
+                  <img
+                    src={imagenLocal}
+                    alt="Vista previa"
+                    style={{ maxWidth: "100px", maxHeight: "100px", objectFit: "contain" }}
                     className="me-3"
                   />
                   <div className="flex-grow-1">
                     <p className="mb-0">Imagen actual</p>
                     <small className="text-muted">Haz clic para ver la imagen</small>
                   </div>
-                  <Button 
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={handleRemoveImagen}
-                  >
+                  <Button variant="outline-danger" size="sm" onClick={handleRemoveImagen} disabled={isLoading}>
                     <i className="bi bi-x-lg"></i>
                   </Button>
                 </div>
               ) : (
                 <>
-                  <Form.Control
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImagenChange}
-                    className="form-control-lg"
-                  />
-                  <div className="text-muted small mt-1">
-                    Selecciona una nueva imagen para reemplazar la actual
-                  </div>
+                  <Form.Control type="file" accept="image/*" onChange={handleImagenChange} className="form-control-lg" disabled={isLoading} />
+                  <div className="text-muted small mt-1">Selecciona una nueva imagen para reemplazar la actual</div>
                 </>
               )}
             </div>
@@ -231,19 +185,14 @@ const ModalEdicionProducto = ({
         </Form>
       </Modal.Body>
       <Modal.Footer className="border-0 pt-0">
-        <Button 
-          variant="light" 
-          onClick={handleClose}
-          className="px-4"
-          disabled={isLoading}
-        >
+        <Button variant="light" onClick={handleClose} className="px-4" disabled={isLoading}>
           Cancelar
         </Button>
-        <Button 
-          variant="primary" 
-          type="submit"
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
           className="px-4"
-          style={{ backgroundColor: '#0093E9', borderColor: '#0093E9' }}
+          style={{ backgroundColor: "#0093E9", borderColor: "#0093E9" }}
           disabled={isLoading}
         >
           {isLoading ? (

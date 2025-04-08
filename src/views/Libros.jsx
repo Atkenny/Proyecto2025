@@ -18,9 +18,16 @@ import ModalEliminacionLibro from "../components/Libros/ModalEliminacionLibro";
 import AnimacionEliminacion from "../components/Libros/AnimacionEliminacion";
 import AnimacionRegistro from "../components/Libros/AnimacionRegistro";
 import { useAuth } from "../assets/database/authcontext";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
+import Paginacion from "../components/Ordenamiento/Paginacion";
 
 const Libros = () => {
   const [libros, setLibros] = useState([]);
+  const [filteredLibros, setFilteredLibros] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Número de libros por página
+
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -39,7 +46,6 @@ const Libros = () => {
 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
-
   const librosCollection = collection(db, "Libros");
 
   const fetchData = useCallback(async () => {
@@ -63,6 +69,24 @@ const Libros = () => {
       fetchData();
     }
   }, [isLoggedIn, navigate, fetchData]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredLibros(libros);
+    } else {
+      const filtered = libros.filter((libro) =>
+        libro.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        libro.autor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        libro.genero.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredLibros(filtered);
+    }
+  }, [searchTerm, libros]);
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1); // Reinicia la paginación al buscar
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -200,22 +224,45 @@ const Libros = () => {
     setShowDeleteModal(true);
   };
 
+  const paginatedLibros = filteredLibros.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <Container className="mt-5">
       <br />
-      <h4>Gestión de Libros</h4>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h4>Gestión de Libros</h4>
+        {isLoggedIn && (
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus-circle me-2"></i>
+            Agregar Libro
+          </Button>
+        )}
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
-      {isLoggedIn && (
-        <Button className="mb-3" onClick={() => setShowModal(true)}>
-          Agregar libro
-        </Button>
-      )}
+
+      <CuadroBusquedas
+        searchText={searchTerm}
+        handleSearchChange={handleSearchChange}
+        placeholder="Buscar libro por nombre, autor o género..."
+      />
+
       <TablaLibros
-        libros={libros}
+        libros={paginatedLibros}
         openEditModal={openEditModal}
         openDeleteModal={openDeleteModal}
         isLoggedIn={isLoggedIn}
       />
+
+      <Paginacion
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredLibros.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
+
       <ModalRegistroLibro
         showModal={showModal}
         setShowModal={setShowModal}
@@ -246,7 +293,7 @@ const Libros = () => {
       <AnimacionRegistro
         show={showAnimacionRegistro}
         onHide={() => setShowAnimacionRegistro(false)}
-        tipo={libroEditado ? 'editar' : 'guardar'}
+        tipo={libroEditado ? "editar" : "guardar"}
       />
     </Container>
   );

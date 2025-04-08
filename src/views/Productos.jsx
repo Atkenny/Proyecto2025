@@ -14,23 +14,29 @@ import ModalRegistroProducto from "../components/Productos/ModalRegistroProducto
 import ModalEdicionProducto from "../components/Productos/ModalEdicionProducto";
 import ModalEliminacionProducto from "../components/Productos/ModalEliminacionProducto";
 import AnimacionEliminacion from "../components/Productos/AnimacionEliminacion";
-import AnimacionRegistro from "../components/Productos/AnimacionRegistro";
 import { useAuth } from "../assets/database/authcontext";
 import { useNavigate } from "react-router-dom";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
+import Paginacion from "../components/Ordenamiento/Paginacion";
 
 const Productos = () => {
   const [productos, setProductos] = useState([]);
+  const [filteredProductos, setFilteredProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showAnimacionRegistro, setShowAnimacionRegistro] = useState(false);
   const [showAnimacionEliminacion, setShowAnimacionEliminacion] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const [nuevoProducto, setNuevoProducto] = useState({
     nombreProducto: "",
     precio: "",
     categoria: "",
-    imagen: ""
+    imagen: "",
   });
   const [productoEditado, setProductoEditado] = useState(null);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
@@ -51,21 +57,21 @@ const Productos = () => {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
+    setIsLoading(true);
     try {
-      setShowAnimacionRegistro(true);
       await addDoc(productosCollection, nuevoProducto);
       setShowModal(false);
       setNuevoProducto({
         nombreProducto: "",
         precio: "",
         categoria: "",
-        imagen: ""
+        imagen: "",
       });
       await fetchData();
     } catch (error) {
       console.error("Error al agregar producto:", error);
     } finally {
-      setShowAnimacionRegistro(false);
+      setIsLoading(false);
     }
   };
 
@@ -80,8 +86,8 @@ const Productos = () => {
       alert("Por favor, completa todos los campos requeridos.");
       return;
     }
+    setIsLoading(true);
     try {
-      setShowAnimacionRegistro(true);
       const productoRef = doc(db, "productos", productoEditado.id);
       await updateDoc(productoRef, productoEditado);
       setShowEditModal(false);
@@ -89,7 +95,7 @@ const Productos = () => {
     } catch (error) {
       console.error("Error al actualizar producto:", error);
     } finally {
-      setShowAnimacionRegistro(false);
+      setIsLoading(false);
     }
   };
 
@@ -169,26 +175,65 @@ const Productos = () => {
 
   useEffect(() => {
     const cargarDatos = async () => {
-      await Promise.all([fetchData(), fetchCategorias()]);
+      await fetchData();
+      await fetchCategorias();
     };
     cargarDatos();
   }, [fetchData, fetchCategorias]);
 
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredProductos(productos);
+    } else {
+      const filtered = productos.filter((producto) =>
+        producto.nombreProducto.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProductos(filtered);
+    }
+  }, [searchTerm, productos]);
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1);
+  };
+
+  const paginatedProductos = filteredProductos.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <Container className="mt-5">
       <br />
-      <h4>Gestión de Productos</h4>
-      {isLoggedIn && (
-        <Button className="mb-3" onClick={() => setShowModal(true)}>
-          Agregar producto
-        </Button>
-      )}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestión de Productos</h2>
+        {isLoggedIn && (
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus-circle me-2"></i>
+            Agregar Producto
+          </Button>
+        )}
+      </div>
+
+      <CuadroBusquedas
+        searchText={searchTerm}
+        handleSearchChange={handleSearchChange}
+        placeholder="Buscar producto por nombre, categoría o precio..."
+      />
+
       <TablaProductos
-        productos={productos}
+        productos={paginatedProductos}
         openEditModal={openEditModal}
         openDeleteModal={openDeleteModal}
-        isLoggedIn={isLoggedIn}
       />
+
+      <Paginacion
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredProductos.length}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
+
       <ModalRegistroProducto
         showModal={showModal}
         setShowModal={setShowModal}
@@ -196,6 +241,7 @@ const Productos = () => {
         handleInputChange={handleInputChange}
         handleAddProducto={handleAddProducto}
         categorias={categorias}
+        isLoading={isLoading}
       />
       <ModalEdicionProducto
         showEditModal={showEditModal}
@@ -205,6 +251,7 @@ const Productos = () => {
         handleEditInputChange={handleEditInputChange}
         handleEditProducto={handleEditProducto}
         categorias={categorias}
+        isLoading={isLoading}
       />
       <ModalEliminacionProducto
         showDeleteModal={showDeleteModal}
@@ -214,11 +261,6 @@ const Productos = () => {
       <AnimacionEliminacion
         show={showAnimacionEliminacion}
         onHide={() => setShowAnimacionEliminacion(false)}
-      />
-      <AnimacionRegistro
-        show={showAnimacionRegistro}
-        onHide={() => setShowAnimacionRegistro(false)}
-        tipo={productoEditado ? 'editar' : 'guardar'}
       />
     </Container>
   );

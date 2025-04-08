@@ -5,6 +5,7 @@ import LoginForm from "../components/LoginForm";
 import { appfirebase } from "../assets/database/firebaseconfig";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth } from "../assets/database/authcontext";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
 
 import "../App.css";
 
@@ -16,6 +17,7 @@ const Login = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,7 +48,7 @@ const Login = () => {
   }
 
   return (
-    <Container className="d-flex vh-100 justify-content-center align-items-center">
+    <Container className="d-flex vh-100 justify-content-center align-items-center flex-column">
       <LoginForm
         email={email}
         password={password}
