@@ -22,7 +22,7 @@ import Paginacion from "../components/Ordenamiento/Paginacion";
 const Productos = () => {
   const [productos, setProductos] = useState([]);
   const [filteredProductos, setFilteredProductos] = useState([]);
-  const [categorias, setCategorias] = useState([]);
+  const [Categorias, setCategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
