@@ -22,7 +22,7 @@ import Paginacion from "../components/Ordenamiento/Paginacion";
 const Productos = () => {
   const [productos, setProductos] = useState([]);
   const [filteredProductos, setFilteredProductos] = useState([]);
-  const [Categorias, setCategorias] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -59,15 +59,7 @@ const Productos = () => {
     }
     setIsLoading(true);
     try {
-      if (navigator.onLine) {
-        await addDoc(productosCollection, nuevoProducto);
-        await fetchData();
-      } else {
-        const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
-        productosLocal.push(nuevoProducto);
-        localStorage.setItem("productos", JSON.stringify(productosLocal));
-        alert("Producto agregado localmente. Se sincronizará cuando haya conexión.");
-      }
+      await addDoc(productosCollection, nuevoProducto);
       setShowModal(false);
       setNuevoProducto({
         nombreProducto: "",
@@ -75,6 +67,7 @@ const Productos = () => {
         categoria: "",
         imagen: "",
       });
+      await fetchData();
     } catch (error) {
       console.error("Error al agregar producto:", error);
     } finally {
@@ -95,19 +88,10 @@ const Productos = () => {
     }
     setIsLoading(true);
     try {
-      if (navigator.onLine) {
-        const productoRef = doc(db, "productos", productoEditado.id);
-        await updateDoc(productoRef, productoEditado);
-        await fetchData();
-      } else {
-        const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
-        const updatedProductos = productosLocal.map((producto) =>
-          producto.id === productoEditado.id ? productoEditado : producto
-        );
-        localStorage.setItem("productos", JSON.stringify(updatedProductos));
-        alert("Producto editado localmente. Se sincronizará cuando haya conexión.");
-      }
+      const productoRef = doc(db, "productos", productoEditado.id);
+      await updateDoc(productoRef, productoEditado);
       setShowEditModal(false);
+      await fetchData();
     } catch (error) {
       console.error("Error al actualizar producto:", error);
     } finally {
@@ -125,23 +109,42 @@ const Productos = () => {
     if (productoAEliminar) {
       try {
         setShowAnimacionEliminacion(true);
-        if (navigator.onLine) {
-          const productoRef = doc(db, "productos", productoAEliminar.id);
-          await deleteDoc(productoRef);
-          await fetchData();
-        } else {
-          const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
-          const filteredProductos = productosLocal.filter((producto) => producto.id !== productoAEliminar.id);
-          localStorage.setItem("productos", JSON.stringify(filteredProductos));
-          alert("Producto eliminado localmente. Se sincronizará cuando haya conexión.");
-        }
+        const productoRef = doc(db, "productos", productoAEliminar.id);
+        await deleteDoc(productoRef);
         setShowDeleteModal(false);
+        await fetchData();
       } catch (error) {
         console.error("Error al eliminar producto:", error);
       } finally {
         setShowAnimacionEliminacion(false);
       }
     }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNuevoProducto((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setProductoEditado((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const openEditModal = (producto) => {
+    setProductoEditado(producto);
+    setShowEditModal(true);
+  };
+
+  const openDeleteModal = (producto) => {
+    setProductoAEliminar(producto);
+    setShowDeleteModal(true);
   };
 
   const fetchData = useCallback(async () => {
@@ -152,17 +155,8 @@ const Productos = () => {
         id: doc.id,
       }));
       setProductos(fetchedProductos);
-
-      // Guardar en localStorage cuando haya conexión
-      localStorage.setItem("productos", JSON.stringify(fetchedProductos));
     } catch (error) {
       console.error("Error al obtener productos:", error);
-
-      // Si no hay conexión, cargar los productos desde localStorage
-      const cachedProductos = localStorage.getItem("productos");
-      if (cachedProductos) {
-        setProductos(JSON.parse(cachedProductos));
-      }
     }
   }, [productosCollection]);
 
@@ -203,66 +197,71 @@ const Productos = () => {
     setCurrentPage(1);
   };
 
-  const paginatedData = filteredProductos.slice(
+  const paginatedProductos = filteredProductos.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
-
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const handleCloseModal = () => setShowModal(false);
-  const handleCloseEditModal = () => setShowEditModal(false);
-  const handleCloseDeleteModal = () => setShowDeleteModal(false);
-
   return (
-    <Container>
-      <Button onClick={() => setShowModal(true)}>Agregar Producto</Button>
+    <Container className="mt-5">
+      <br />
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestión de Productos</h2>
+        {isLoggedIn && (
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus-circle me-2"></i>
+            Agregar Producto
+          </Button>
+        )}
+      </div>
 
-      <CuadroBusquedas searchTerm={searchTerm} handleSearchChange={handleSearchChange} />
+      <CuadroBusquedas
+        searchText={searchTerm}
+        handleSearchChange={handleSearchChange}
+        placeholder="Buscar producto por nombre, categoría o precio..."
+      />
 
       <TablaProductos
-        productos={paginatedData}
-        setShowEditModal={setShowEditModal}
-        setProductoEditado={setProductoEditado}
-        setShowDeleteModal={setShowDeleteModal}
-        setProductoAEliminar={setProductoAEliminar}
+        productos={paginatedProductos}
+        openEditModal={openEditModal}
+        openDeleteModal={openDeleteModal}
       />
 
       <Paginacion
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredProductos.length}
         currentPage={currentPage}
-        totalPages={totalPages}
-        handlePageChange={handlePageChange}
+        setCurrentPage={setCurrentPage}
       />
 
       <ModalRegistroProducto
-        show={showModal}
-        handleClose={handleCloseModal}
-        handleAddProducto={handleAddProducto}
+        showModal={showModal}
+        setShowModal={setShowModal}
         nuevoProducto={nuevoProducto}
-        setNuevoProducto={setNuevoProducto}
+        handleInputChange={handleInputChange}
+        handleAddProducto={handleAddProducto}
+        categorias={categorias}
         isLoading={isLoading}
       />
-
       <ModalEdicionProducto
-        show={showEditModal}
-        handleClose={handleCloseEditModal}
-        handleEditProducto={handleEditProducto}
+        showEditModal={showEditModal}
+        setShowEditModal={setShowEditModal}
         productoEditado={productoEditado}
         setProductoEditado={setProductoEditado}
+        handleEditInputChange={handleEditInputChange}
+        handleEditProducto={handleEditProducto}
+        categorias={categorias}
         isLoading={isLoading}
       />
-
       <ModalEliminacionProducto
-        show={showDeleteModal}
-        handleClose={handleCloseDeleteModal}
+        showDeleteModal={showDeleteModal}
+        setShowDeleteModal={setShowDeleteModal}
         handleDeleteProducto={handleDeleteProducto}
       />
-
-      {showAnimacionEliminacion && <AnimacionEliminacion />}
+      <AnimacionEliminacion
+        show={showAnimacionEliminacion}
+        onHide={() => setShowAnimacionEliminacion(false)}
+      />
     </Container>
   );
 };

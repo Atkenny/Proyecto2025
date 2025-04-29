@@ -1,11 +1,6 @@
-// Importa las funciones necesarias
+// Importa las funciones necesarias de Firebase
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  enableIndexedDbPersistence,
-} from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -29,28 +24,22 @@ const storage = getStorage(appfirebase);
 // Inicializa Auth
 const auth = getAuth(appfirebase);
 
-// Inicializa Firestore con persistencia local
-let db;
-try {
-  db = initializeFirestore(appfirebase, {
-    localCache: persistentLocalCache({
-      cacheSizeBytes: 100 * 1024 * 1024, // 100 MB
-    }),
-  });
-  console.log("Firestore inicializado con persistencia local (IndexedDB).");
-} catch (error) {
-  console.error("Error al inicializar Firestore con persistencia:", error);
-  // Fallback para navegadores que no soportan initializeFirestore
-  db = getFirestore(appfirebase);
-}
+// Inicializa Firestore
+const db = getFirestore(appfirebase);
 
-// También intentar habilitar manualmente la persistencia
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === "failed-precondition") {
-    console.warn("La persistencia solo está disponible en una pestaña a la vez.");
-  } else if (err.code === "unimplemented") {
-    console.warn("El navegador no soporta persistencia offline.");
-  }
-});
+// Habilitar la persistencia de IndexedDB en Firestore
+enableIndexedDbPersistence(db)
+  .then(() => {
+    console.log("Persistencia de IndexedDB habilitada.");
+  })
+  .catch((err) => {
+    if (err.code === "failed-precondition") {
+      console.warn("La persistencia solo está disponible en una pestaña a la vez.");
+    } else if (err.code === "unimplemented") {
+      console.warn("El navegador no soporta persistencia offline.");
+    } else {
+      console.error("Error al habilitar la persistencia:", err);
+    }
+  });
 
 export { appfirebase, db, auth, storage };
