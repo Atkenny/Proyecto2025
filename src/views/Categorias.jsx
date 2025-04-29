@@ -38,9 +38,23 @@ const Categorias = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
+
+  // Detectar conexión/desconexión
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -49,7 +63,7 @@ const Categorias = () => {
         id: doc.id,
         ...doc.data(),
       }));
-      console.log("Categorías cargadas:", categoriasData); // Para depuración
+      console.log("Categorías cargadas:", categoriasData);
       setCategorias(categoriasData);
       setFilteredCategorias(categoriasData);
     } catch (error) {
@@ -82,23 +96,19 @@ const Categorias = () => {
       navigate("/login");
       return;
     }
-
     if (!nuevaCategoria.nombreCategoria || !nuevaCategoria.descripcionCategoria) {
-      alert("Por favor, completa todos los campos requeridos.");
+      alert("Por favor, completa todos los campos.");
       return;
     }
     try {
       setShowAnimacionRegistro(true);
       await addDoc(collection(db, "categorias"), nuevaCategoria);
       setShowModal(false);
-      setNuevaCategoria({
-        nombreCategoria: "",
-        descripcionCategoria: "",
-      });
+      setNuevaCategoria({ nombreCategoria: "", descripcionCategoria: "" });
       await fetchData();
     } catch (error) {
       console.error("Error al agregar categoría:", error);
-      alert("Error al agregar la categoría. Por favor, intenta de nuevo.");
+      alert("Error al agregar la categoría.");
     } finally {
       setShowAnimacionRegistro(false);
     }
@@ -110,14 +120,12 @@ const Categorias = () => {
       navigate("/login");
       return;
     }
-
     if (!categoriaEditada || !categoriaEditada.id) {
       alert("No hay una categoría seleccionada para editar.");
       return;
     }
-
     if (!categoriaEditada.nombreCategoria || !categoriaEditada.descripcionCategoria) {
-      alert("Por favor, completa todos los campos requeridos.");
+      alert("Completa todos los campos.");
       return;
     }
     try {
@@ -130,8 +138,8 @@ const Categorias = () => {
       setShowEditModal(false);
       await fetchData();
     } catch (error) {
-      console.error("Error al actualizar categoría:", error);
-      alert("Error al actualizar la categoría. Por favor, intenta de nuevo.");
+      console.error("Error al editar categoría:", error);
+      alert("Error al editar la categoría.");
     } finally {
       setShowAnimacionRegistro(false);
     }
@@ -143,12 +151,10 @@ const Categorias = () => {
       navigate("/login");
       return;
     }
-
     if (!categoriaAEliminar || !categoriaAEliminar.id) {
       alert("No hay una categoría seleccionada para eliminar.");
       return;
     }
-
     try {
       setShowAnimacionEliminacion(true);
       const categoriaRef = doc(db, "categorias", categoriaAEliminar.id);
@@ -158,7 +164,7 @@ const Categorias = () => {
       await fetchData();
     } catch (error) {
       console.error("Error al eliminar categoría:", error);
-      alert("Error al eliminar la categoría. Por favor, intenta de nuevo.");
+      alert("Error al eliminar la categoría.");
     } finally {
       setShowAnimacionEliminacion(false);
     }
@@ -193,6 +199,12 @@ const Categorias = () => {
           handleSearchChange={handleSearchChange}
           placeholder="Buscar categoría..."
         />
+
+        {isOffline && (
+          <div className="alert alert-warning text-center" role="alert">
+            Estás sin conexión. Trabajando en modo offline.
+          </div>
+        )}
 
         <TablaCategorias
           categorias={currentCategorias}

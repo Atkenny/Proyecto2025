@@ -59,7 +59,15 @@ const Productos = () => {
     }
     setIsLoading(true);
     try {
-      await addDoc(productosCollection, nuevoProducto);
+      if (navigator.onLine) {
+        await addDoc(productosCollection, nuevoProducto);
+        await fetchData();
+      } else {
+        const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
+        productosLocal.push(nuevoProducto);
+        localStorage.setItem("productos", JSON.stringify(productosLocal));
+        alert("Producto agregado localmente. Se sincronizará cuando haya conexión.");
+      }
       setShowModal(false);
       setNuevoProducto({
         nombreProducto: "",
@@ -67,7 +75,6 @@ const Productos = () => {
         categoria: "",
         imagen: "",
       });
-      await fetchData();
     } catch (error) {
       console.error("Error al agregar producto:", error);
     } finally {
@@ -88,10 +95,19 @@ const Productos = () => {
     }
     setIsLoading(true);
     try {
-      const productoRef = doc(db, "productos", productoEditado.id);
-      await updateDoc(productoRef, productoEditado);
+      if (navigator.onLine) {
+        const productoRef = doc(db, "productos", productoEditado.id);
+        await updateDoc(productoRef, productoEditado);
+        await fetchData();
+      } else {
+        const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
+        const updatedProductos = productosLocal.map((producto) =>
+          producto.id === productoEditado.id ? productoEditado : producto
+        );
+        localStorage.setItem("productos", JSON.stringify(updatedProductos));
+        alert("Producto editado localmente. Se sincronizará cuando haya conexión.");
+      }
       setShowEditModal(false);
-      await fetchData();
     } catch (error) {
       console.error("Error al actualizar producto:", error);
     } finally {
@@ -109,42 +125,23 @@ const Productos = () => {
     if (productoAEliminar) {
       try {
         setShowAnimacionEliminacion(true);
-        const productoRef = doc(db, "productos", productoAEliminar.id);
-        await deleteDoc(productoRef);
+        if (navigator.onLine) {
+          const productoRef = doc(db, "productos", productoAEliminar.id);
+          await deleteDoc(productoRef);
+          await fetchData();
+        } else {
+          const productosLocal = JSON.parse(localStorage.getItem("productos") || "[]");
+          const filteredProductos = productosLocal.filter((producto) => producto.id !== productoAEliminar.id);
+          localStorage.setItem("productos", JSON.stringify(filteredProductos));
+          alert("Producto eliminado localmente. Se sincronizará cuando haya conexión.");
+        }
         setShowDeleteModal(false);
-        await fetchData();
       } catch (error) {
         console.error("Error al eliminar producto:", error);
       } finally {
         setShowAnimacionEliminacion(false);
       }
     }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNuevoProducto((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setProductoEditado((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
-  const openEditModal = (producto) => {
-    setProductoEditado(producto);
-    setShowEditModal(true);
-  };
-
-  const openDeleteModal = (producto) => {
-    setProductoAEliminar(producto);
-    setShowDeleteModal(true);
   };
 
   const fetchData = useCallback(async () => {
@@ -155,8 +152,17 @@ const Productos = () => {
         id: doc.id,
       }));
       setProductos(fetchedProductos);
+
+      // Guardar en localStorage cuando haya conexión
+      localStorage.setItem("productos", JSON.stringify(fetchedProductos));
     } catch (error) {
       console.error("Error al obtener productos:", error);
+
+      // Si no hay conexión, cargar los productos desde localStorage
+      const cachedProductos = localStorage.getItem("productos");
+      if (cachedProductos) {
+        setProductos(JSON.parse(cachedProductos));
+      }
     }
   }, [productosCollection]);
 
@@ -197,71 +203,66 @@ const Productos = () => {
     setCurrentPage(1);
   };
 
-  const paginatedProductos = filteredProductos.slice(
+  const paginatedData = filteredProductos.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  return (
-    <Container className="mt-5">
-      <br />
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Gestión de Productos</h2>
-        {isLoggedIn && (
-          <Button variant="primary" onClick={() => setShowModal(true)}>
-            <i className="bi bi-plus-circle me-2"></i>
-            Agregar Producto
-          </Button>
-        )}
-      </div>
+  const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
 
-      <CuadroBusquedas
-        searchText={searchTerm}
-        handleSearchChange={handleSearchChange}
-        placeholder="Buscar producto por nombre, categoría o precio..."
-      />
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handleCloseModal = () => setShowModal(false);
+  const handleCloseEditModal = () => setShowEditModal(false);
+  const handleCloseDeleteModal = () => setShowDeleteModal(false);
+
+  return (
+    <Container>
+      <Button onClick={() => setShowModal(true)}>Agregar Producto</Button>
+
+      <CuadroBusquedas searchTerm={searchTerm} handleSearchChange={handleSearchChange} />
 
       <TablaProductos
-        productos={paginatedProductos}
-        openEditModal={openEditModal}
-        openDeleteModal={openDeleteModal}
+        productos={paginatedData}
+        setShowEditModal={setShowEditModal}
+        setProductoEditado={setProductoEditado}
+        setShowDeleteModal={setShowDeleteModal}
+        setProductoAEliminar={setProductoAEliminar}
       />
 
       <Paginacion
-        itemsPerPage={itemsPerPage}
-        totalItems={filteredProductos.length}
         currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        handlePageChange={handlePageChange}
       />
 
       <ModalRegistroProducto
-        showModal={showModal}
-        setShowModal={setShowModal}
-        nuevoProducto={nuevoProducto}
-        handleInputChange={handleInputChange}
+        show={showModal}
+        handleClose={handleCloseModal}
         handleAddProducto={handleAddProducto}
-        categorias={categorias}
+        nuevoProducto={nuevoProducto}
+        setNuevoProducto={setNuevoProducto}
         isLoading={isLoading}
       />
+
       <ModalEdicionProducto
-        showEditModal={showEditModal}
-        setShowEditModal={setShowEditModal}
+        show={showEditModal}
+        handleClose={handleCloseEditModal}
+        handleEditProducto={handleEditProducto}
         productoEditado={productoEditado}
         setProductoEditado={setProductoEditado}
-        handleEditInputChange={handleEditInputChange}
-        handleEditProducto={handleEditProducto}
-        categorias={categorias}
         isLoading={isLoading}
       />
+
       <ModalEliminacionProducto
-        showDeleteModal={showDeleteModal}
-        setShowDeleteModal={setShowDeleteModal}
+        show={showDeleteModal}
+        handleClose={handleCloseDeleteModal}
         handleDeleteProducto={handleDeleteProducto}
       />
-      <AnimacionEliminacion
-        show={showAnimacionEliminacion}
-        onHide={() => setShowAnimacionEliminacion(false)}
-      />
+
+      {showAnimacionEliminacion && <AnimacionEliminacion />}
     </Container>
   );
 };

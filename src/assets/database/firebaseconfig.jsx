@@ -1,9 +1,13 @@
-// Import the functions you need from the SDKs you need
+// Importa las funciones necesarias
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  enableIndexedDbPersistence,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-
 
 // Configuración de Firebase usando variables de entorno
 const firebaseConfig = {
@@ -18,12 +22,35 @@ const firebaseConfig = {
 
 // Inicializa Firebase
 const appfirebase = initializeApp(firebaseConfig);
+
+// Inicializa Storage
 const storage = getStorage(appfirebase);
 
-// Inicializa Firestore
-const db = getFirestore(appfirebase);
-
-// Inicializa Authentication
+// Inicializa Auth
 const auth = getAuth(appfirebase);
 
-export { appfirebase, db, auth, storage }; 
+// Inicializa Firestore con persistencia local
+let db;
+try {
+  db = initializeFirestore(appfirebase, {
+    localCache: persistentLocalCache({
+      cacheSizeBytes: 100 * 1024 * 1024, // 100 MB
+    }),
+  });
+  console.log("Firestore inicializado con persistencia local (IndexedDB).");
+} catch (error) {
+  console.error("Error al inicializar Firestore con persistencia:", error);
+  // Fallback para navegadores que no soportan initializeFirestore
+  db = getFirestore(appfirebase);
+}
+
+// También intentar habilitar manualmente la persistencia
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === "failed-precondition") {
+    console.warn("La persistencia solo está disponible en una pestaña a la vez.");
+  } else if (err.code === "unimplemented") {
+    console.warn("El navegador no soporta persistencia offline.");
+  }
+});
+
+export { appfirebase, db, auth, storage };
