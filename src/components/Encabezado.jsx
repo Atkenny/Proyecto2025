@@ -54,7 +54,7 @@ const Encabezado = () => {
               className={isCollapsed ? 'color-texto-marca' : 'text-white'}
             >
               <i className="bi bi-list me-2"></i>Menú
-DESTDIR:            </Offcanvas.Title>
+            </Offcanvas.Title>
           </Offcanvas.Header>
           <Offcanvas.Body>
             <Nav className="justify-content-end flex-grow-1 pe-3">
@@ -108,6 +108,13 @@ DESTDIR:            </Offcanvas.Title>
                   >
                     <i className="bi bi-bar-chart-fill me-2"></i>
                     <strong>Estadísticas</strong>
+                  </Nav.Link>
+                  <Nav.Link
+                    onClick={() => handleNavigate('/pronunciacion')}
+                    className={isCollapsed ? 'color-texto-marca' : 'text-white'}
+                  >
+                    <i className="bi bi-mic-fill me-2"></i>
+                    <strong>Pronunciación</strong>
                   </Nav.Link>
                 </>
               )}
