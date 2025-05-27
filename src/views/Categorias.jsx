@@ -200,7 +200,7 @@ const Categorias = () => {
           <Button variant="primary" onClick={() => setShowModal(true)}>
             Agregar Categoría
           </Button>
-        </div>
+        
 
         <Col lg={3} md={4} sm={4} xs={5}>
           <Button
@@ -217,6 +217,8 @@ const Categorias = () => {
           handleSearchChange={handleSearchChange}
           placeholder="Buscar categoría..."
         />
+        
+        </div>
 
         {isOffline && (
           <div className="alert alert-warning text-center" role="alert">
