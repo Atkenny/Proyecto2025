@@ -5,6 +5,11 @@
   text-align: center;
 }
 
+.texto-blanco .dropdown-toggle{
+  color: white !important;
+  font-weight: bold;
+}
+
 .margen-superior-main {
   margin-top: 60px;
 }
