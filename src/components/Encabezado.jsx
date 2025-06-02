@@ -99,6 +99,10 @@ const Encabezado = () => {
                     <i className="bi bi-mic-fill me-2"></i>
                     <strong>{t('menu.pronunciacion')}</strong>
                   </Nav.Link>
+                  <Nav.Link onClick={() => handleNavigate('/empleados')} className={isCollapsed ? 'color-texto-marca' : 'text-white'}>
+                    <i className="bi bi-person-fill-check me-2"></i>
+                    <strong>{t('menu.empleados')}</strong>
+                  </Nav.Link>
                 </>
               )}
               {isLoggedIn ? (
