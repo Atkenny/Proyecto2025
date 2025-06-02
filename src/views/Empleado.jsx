@@ -5,7 +5,7 @@ import { collection, addDoc, onSnapshot } from "firebase/firestore";
 
 import ModalRegistroEmpleado from "../components/Empleados/ModalRegistroEmpleado";
 import TablaEmpleados from "../components/Empleados/TablaEmpleados";
-import CuadroBusquedas from "../components/busquedas/CuadroBusquedas";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
 
 const Empleados = () => {
   const [empleados, setEmpleados] = useState([]);
