@@ -17,7 +17,7 @@ import AnimacionEliminacion from "../components/Categorias/AnimacionEliminacion"
 import AnimacionRegistro from "../components/Categorias/AnimacionRegistro";
 import { useAuth } from "../assets/database/authcontext";
 import { useNavigate } from "react-router-dom";
-import CuadroBusquedas from "../components/busquedas/CuadroBusquedas";
+import CuadroBusquedas from "../components/Busquedas/CuadroBusquedas";
 import Paginacion from "../components/Ordenamiento/Paginacion";
 import ChatIA from "../components/Chat/ChatIA";
 
