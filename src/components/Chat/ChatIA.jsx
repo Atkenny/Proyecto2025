@@ -45,23 +45,40 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   };
 
+  // Function to clear chat
+  const limpiarChat = async () => {
+    try {
+      const snapshot = await getDocs(chatCollection);
+      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      setMensajes([]);
+    } catch (error) {
+      console.error("Error al limpiar el chat:", error);
+      await addDoc(chatCollection, {
+        texto: "Ocurrió un error al limpiar el chat. Intenta de nuevo.",
+        emisor: "ia",
+        timestamp: new Date(),
+      });
+    }
+  };
+
   // Function to get AI response from Gemini API
   const obtenerRespuestaIA = async (promptUsuario) => {
     const apiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY;
     const prompt = `
       Analiza el mensaje del usuario: "${promptUsuario}".
       Determina la intención del usuario respecto a operaciones con categorías (no necesariamente con las mismas palabras, pueden ser sinonimos):
-      - "crear": Si el usuario quiere crear una nueva categoría (ejemplo: 'crear categoría', 'agregar categoría', o un mensaje con nombre y descripción como 'Nombre: X, Descripción: Y'). Extrae el nombre y descripción. Si no se proporciona descripción, genera una corta basada en el nombre. Asegúrate de que comiencen con mayúsculas.
+      - "crear": Si el usuario quiere crear una nueva categoría (ejemplo: 'crear categoría', 'agregar categoría', o un mensaje con nombre y descripción como 'NombreCategoria: X, DescripcionCategoria: Y'). Extrae el nombreCategoria y descripcionCategoria. Si no se proporciona descripcionCategoria, genera una corta basada en el nombreCategoria. Asegúrate de que comiencen con mayúsculas.
       - "listar": Si el usuario quiere ver las categorías existentes (ejemplo: 'ver categorías', 'mostrar categorías', 'listar categorías').
-      - "actualizar": Si el usuario quiere actualizar una categoría existente (ejemplo: 'actualizar categoría', 'modificar categoría', 'actualiza la categoría michis que la descripción diga X'). Si especifica un número o nombre (ejemplo: 'actualizar categoría 1', 'actualiza la categoría michis'), incluye el campo "seleccion" con el número o nombre. Si se proporcionan nuevos datos (ejemplo: 'que la descripción diga X'), incluye también "datos".
-      - "eliminar": Si el usuario quiere eliminar una categoría existente (ejemplo: 'eliminar categoría', 'borrar categoría', 'quiero eliminar la categoría carpintería'). Si especifica un número o nombre (ejemplo: 'eliminar categoría 1', 'quiero eliminar la categoría carpintería'), incluye el campo "seleccion" con el número o nombre.
-      - "seleccionar_categoria": Si el usuario proporciona únicamente un número (ejemplo: '1') o nombre exacto de una categoría (ejemplo: 'Carpintería') tras una solicitud de actualización o eliminación.
-      - "actualizar_datos": Si el usuario proporciona nuevos datos para una categoría (ejemplo: 'Nuevo nombre: X, Nueva descripción: Y') tras seleccionar una categoría.
+      - "actualizar": Si el usuario quiere actualizar una categoría existente (ejemplo: 'actualizar categoría', 'modificar categoría', 'actualiza la categoría michis que la descripcionCategoria diga X'). Si especifica un número o nombreCategoria (ejemplo: 'actualizar categoría 1', 'actualiza la categoría michis'), incluye el campo "seleccion" con el número o nombreCategoria. Si se proporcionan nuevos datos (ejemplo: 'que la descripcionCategoria diga X'), incluye también "datos".
+      - "eliminar": Si el usuario quiere eliminar una categoría existente (ejemplo: 'eliminar categoría', 'borrar categoría', 'quiero eliminar la categoría carpintería'). Si especifica un número o nombreCategoria (ejemplo: 'eliminar categoría 1', 'quiero eliminar la categoría carpintería'), incluye el campo "seleccion" con el número o nombreCategoria.
+      - "seleccionar_categoria": Si el usuario proporciona únicamente un número (ejemplo: '1') o nombreCategoria exacto de una categoría (ejemplo: 'Carpintería') tras una solicitud de actualización o eliminación.
+      - "actualizar_datos": Si el usuario proporciona nuevos datos para una categoría (ejemplo: 'Nuevo nombreCategoria: X, Nueva descripcionCategoria: Y') tras seleccionar una categoría.
 
       Devuelve un JSON con la estructura:
       {
         "intencion": "crear|listar|actualizar|eliminar|seleccionar_categoria|actualizar_datos",
-        "datos": { "nombre": "...", "descripcion": "..." }, // Solo para "crear" y "actualizar_datos", o "actualizar" si se proporcionan datos
+        "datos": { "nombreCategoria": "...", "descripcionCategoria": "..." }, // Solo para "crear" y "actualizar_datos", o "actualizar" si se proporcionan datos
         "seleccion": "..." // Solo para "eliminar" o "actualizar" si se especifica una categoría directamente
       }
       Si no se detecta una intención clara, devuelve { "intencion": "desconocida" }.
@@ -137,7 +154,9 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
             timestamp: new Date(),
           });
         } else {
-          const lista = categorias.map((cat, i) => `${i + 1}. ${cat.nombre}: ${cat.descripcion}`).join("\n");
+          const lista = categorias
+            .map((cat, i) => `${i + 1}. ${cat.nombreCategoria}: ${cat.descripcionCategoria}`)
+            .join("\n");
           await addDoc(chatCollection, {
             texto: `Categorías disponibles:\n${lista}`,
             emisor: "ia",
@@ -148,10 +167,10 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
 
       if (respuestaIA.intencion === "crear" && !intencion) {
         const datos = respuestaIA.datos;
-        if (datos.nombre && datos.descripcion) {
+        if (datos.nombreCategoria && datos.descripcionCategoria) {
           await addDoc(categoriasCollection, datos);
           await addDoc(chatCollection, {
-            texto: `Categoría "${datos.nombre}" registrada con éxito.`,
+            texto: `Categoría "${datos.nombreCategoria}" registrada con éxito.`,
             emisor: "ia",
             timestamp: new Date(),
           });
@@ -175,13 +194,13 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
         } else if (respuestaIA.seleccion) {
           const encontrada = categorias.find(
             (cat, i) =>
-              cat.nombre.toLowerCase() === respuestaIA.seleccion.toLowerCase() ||
+              cat.nombreCategoria.toLowerCase() === respuestaIA.seleccion.toLowerCase() ||
               parseInt(respuestaIA.seleccion) === i + 1
           );
           if (encontrada) {
             await deleteDoc(doc(db, "categorias", encontrada.id));
             await addDoc(chatCollection, {
-              texto: `Categoría "${encontrada.nombre}" eliminada con éxito.`,
+              texto: `Categoría "${encontrada.nombreCategoria}" eliminada con éxito.`,
               emisor: "ia",
               timestamp: new Date(),
             });
@@ -195,7 +214,9 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
           }
         } else {
           setIntencion("eliminar");
-          const lista = categorias.map((cat, i) => `${i + 1}. ${cat.nombre}: ${cat.descripcion}`).join("\n");
+          const lista = categorias
+            .map((cat, i) => `${i + 1}. ${cat.nombreCategoria}: ${cat.descripcionCategoria}`)
+            .join("\n");
           await addDoc(chatCollection, {
             texto: `Selecciona una categoría para eliminar:\n${lista}`,
             emisor: "ia",
@@ -207,12 +228,12 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
       if (intencion === "eliminar" && respuestaIA.intencion === "seleccionar_categoria") {
         const encontrada = categorias.find(
           (cat, i) =>
-            cat.nombre.toLowerCase() === mensaje.toLowerCase() || parseInt(mensaje) === i + 1
+            cat.nombreCategoria.toLowerCase() === mensaje.toLowerCase() || parseInt(mensaje) === i + 1
         );
         if (encontrada) {
           await deleteDoc(doc(db, "categorias", encontrada.id));
           await addDoc(chatCollection, {
-            texto: `Categoría "${encontrada.nombre}" eliminada con éxito.`,
+            texto: `Categoría "${encontrada.nombreCategoria}" eliminada con éxito.`,
             emisor: "ia",
             timestamp: new Date(),
           });
@@ -237,14 +258,14 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
         } else if (respuestaIA.seleccion) {
           const encontrada = categorias.find(
             (cat, i) =>
-              cat.nombre.toLowerCase() === respuestaIA.seleccion.toLowerCase() ||
+              cat.nombreCategoria.toLowerCase() === respuestaIA.seleccion.toLowerCase() ||
               parseInt(respuestaIA.seleccion) === i + 1
           );
           if (encontrada) {
             setCategoriaSeleccionada(encontrada);
             setIntencion("actualizar");
             await addDoc(chatCollection, {
-              texto: `Seleccionaste "${encontrada.nombre}". Proporciona nuevos datos.`,
+              texto: `Seleccionaste "${encontrada.nombreCategoria}". Proporciona nuevos datos.`,
               emisor: "ia",
               timestamp: new Date(),
             });
@@ -257,7 +278,9 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
           }
         } else {
           setIntencion("actualizar");
-          const lista = categorias.map((cat, i) => `${i + 1}. ${cat.nombre}: ${cat.descripcion}`).join("\n");
+          const lista = categorias
+            .map((cat, i) => `${i + 1}. ${cat.nombreCategoria}: ${cat.descripcionCategoria}`)
+            .join("\n");
           await addDoc(chatCollection, {
             texto: `Selecciona una categoría para actualizar:\n${lista}`,
             emisor: "ia",
@@ -269,12 +292,12 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
       if (intencion === "actualizar" && respuestaIA.intencion === "seleccionar_categoria") {
         const encontrada = categorias.find(
           (cat, i) =>
-            cat.nombre.toLowerCase() === mensaje.toLowerCase() || parseInt(mensaje) === i + 1
+            cat.nombreCategoria.toLowerCase() === mensaje.toLowerCase() || parseInt(mensaje) === i + 1
         );
         if (encontrada) {
           setCategoriaSeleccionada(encontrada);
           await addDoc(chatCollection, {
-            texto: `Seleccionaste "${encontrada.nombre}". Proporciona los nuevos datos.`,
+            texto: `Seleccionaste "${encontrada.nombreCategoria}". Proporciona los nuevos datos.`,
             emisor: "ia",
             timestamp: new Date(),
           });
@@ -295,11 +318,11 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
         const datos = respuestaIA.datos;
         const ref = doc(db, "categorias", categoriaSeleccionada.id);
         await updateDoc(ref, {
-          nombre: datos.nombre || categoriaSeleccionada.nombre,
-          descripcion: datos.descripcion || categoriaSeleccionada.descripcion,
+          nombreCategoria: datos.nombreCategoria || categoriaSeleccionada.nombreCategoria,
+          descripcionCategoria: datos.descripcionCategoria || categoriaSeleccionada.descripcionCategoria,
         });
         await addDoc(chatCollection, {
-          texto: `Categoría "${categoriaSeleccionada.nombre}" actualizada con éxito.`,
+          texto: `Categoría "${categoriaSeleccionada.nombreCategoria}" actualizada con éxito.`,
           emisor: "ia",
           timestamp: new Date(),
         });
@@ -351,6 +374,9 @@ const ChatIA = ({ showChatModal, setShowChatModal }) => {
         />
       </Modal.Body>
       <Modal.Footer>
+        <Button variant="danger" onClick={limpiarChat} disabled={cargando}>
+          Limpiar Chat
+        </Button>
         <Button variant="secondary" onClick={() => setShowChatModal(false)}>
           Cerrar
         </Button>

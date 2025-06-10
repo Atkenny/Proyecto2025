@@ -46,7 +46,7 @@ i18next
             estadisticas: 'Estadísticas',
             empleados: 'Empleados',
             cerrarsesion: 'Cerrar Sesión',
-            iniciarSesion: 'Iniciar Sesión',
+            iniciarsesion: 'Iniciar Sesión',
             idioma: 'Idioma',
             español: 'Español',
             ingles: 'Inglés',

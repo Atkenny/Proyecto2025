@@ -13,7 +13,7 @@
 /* Estilos para la barra de navegación */
 .color-navbar {
   background-color: #0093E9 !important;
-  background-image: linear-gradient(90deg, #0093E9 0%, #80D0C7 100%);
+  background-image: linear-gradient(90deg, #e91f00 0%, #ff6200 100%);
   position: fixed;
   top: 0;
   width: 100%;
